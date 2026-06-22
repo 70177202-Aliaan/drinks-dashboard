@@ -6,8 +6,13 @@
 # from the dataframe returned by apply_filters().
 # =============================================================================
 
+from __future__ import annotations          # FIX 1: makes all type hints strings at
+                                            # runtime — required for Python < 3.9 compat.
+                                            # Without this, tuple[...] crashes on import.
+
 import streamlit as st
 import pandas as pd
+from typing import Tuple, List             # FIX 2: use typing module as extra safety net
 
 
 # ── Sidebar branding ─────────────────────────────────────────────────────────
@@ -48,7 +53,9 @@ def render_navigation():
 
 # ── Filters ───────────────────────────────────────────────────────────────────
 
-def apply_filters(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+# FIX 3: Changed return type from tuple[pd.DataFrame, list[str]]
+#         to Tuple[pd.DataFrame, List[str]] — works on ALL Python versions
+def apply_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
     """
     Render all sidebar filters and return:
       - filtered_df  : dataframe after applying every active filter
@@ -65,6 +72,10 @@ def apply_filters(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
 
     # ── 2. Beer servings range slider ────────────────────────────────────────
     beer_min, beer_max = int(df["beer_servings"].min()), int(df["beer_servings"].max())
+    # FIX 4: Guard against min == max (e.g. after heavy filtering) — slider
+    #         crashes with a Streamlit error when min_value == max_value
+    if beer_min == beer_max:
+        beer_max = beer_min + 1
     beer_range = st.sidebar.slider(
         "🍺 Beer Servings Range",
         min_value=beer_min,
@@ -76,6 +87,8 @@ def apply_filters(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
 
     # ── 3. Spirit servings range slider ──────────────────────────────────────
     spirit_min, spirit_max = int(df["spirit_servings"].min()), int(df["spirit_servings"].max())
+    if spirit_min == spirit_max:          # FIX 4 (same guard)
+        spirit_max = spirit_min + 1
     spirit_range = st.sidebar.slider(
         "🥃 Spirit Servings Range",
         min_value=spirit_min,
@@ -87,6 +100,8 @@ def apply_filters(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
 
     # ── 4. Wine servings range slider ────────────────────────────────────────
     wine_min, wine_max = int(df["wine_servings"].min()), int(df["wine_servings"].max())
+    if wine_min == wine_max:              # FIX 4 (same guard)
+        wine_max = wine_min + 1
     wine_range = st.sidebar.slider(
         "🍷 Wine Servings Range",
         min_value=wine_min,
@@ -99,6 +114,12 @@ def apply_filters(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     # ── 5. Total alcohol range slider ────────────────────────────────────────
     alc_min = float(df["total_litres_of_pure_alcohol"].min())
     alc_max = float(df["total_litres_of_pure_alcohol"].max())
+    # FIX 5: Round to 1 decimal to avoid floating-point precision issues
+    #         where min/max look different but are actually equal (e.g. 0.0 vs 0.000001)
+    alc_min = round(alc_min, 1)
+    alc_max = round(alc_max, 1)
+    if alc_min == alc_max:                # FIX 4 (same guard for float slider)
+        alc_max = round(alc_min + 0.1, 1)
     alc_range = st.sidebar.slider(
         "🔬 Total Pure Alcohol (L)",
         min_value=alc_min,
@@ -120,7 +141,8 @@ def apply_filters(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         key="feature_select",
     )
     if not selected_cols:
-        selected_cols = numeric_cols  # fallback — never allow an empty selection
+        selected_cols = numeric_cols  # FIX 6: fallback — never allow empty selection
+                                      # (was already present but documented here clearly)
 
     st.sidebar.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
     st.sidebar.markdown(

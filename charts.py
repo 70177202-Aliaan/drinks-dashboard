@@ -122,7 +122,7 @@ def histogram_chart(df: pd.DataFrame, col: str = "beer_servings") -> plt.Figure:
     ax2 = ax.twinx()
     ax2.set_facecolor(CARD_BG)
     ax2.tick_params(colors=TEXT_MUTED, labelsize=8)
-    data.plot.kde(ax=ax2, color=ACCENT_2, linewidth=2, label="KDE")
+    sns.kdeplot(data=data, ax=ax2, color=ACCENT_2, linewidth=2, label="KDE", fill=False)
     ax2.set_ylabel("Density", color=TEXT_MUTED, fontsize=9)
     ax2.set_ylim(bottom=0)
     for spine in ax2.spines.values():
